@@ -1,6 +1,6 @@
 const Banner = ({buttonText, handleOnClick}) => {
   return (
-    <div className="w-full  h-[auto] flex justify-center items-start flex-col py-[200px] gap-5 z-[2] relative">
+    <div className="w-full  h-[auto] flex justify-center items-start flex-col pt-[200px] gap-5 z-[2] relative">
       <h1 className="text-3xl sm:text-4xl md:text-5xl flex flex-row flex-wrap font-bold gap-2">
         <span className="text-white">Coffee</span>
         <span className="text-indigo-600">Connoisseur</span>

@@ -1,12 +1,44 @@
 import Head from "next/head";
 import Image from "next/image";
+import { useContext, useEffect, useState } from "react";
 import Banner from "../components/banner";
 import Card from "../components/card";
-import coffeeStoresData from "../data/coffee-stores.json";
+import useTrackLocation from "../hooks/use-track-location";
 import { fetchCoffeeStores } from "../lib/coffee-stores";
+import { ACTION_TYPES, StoreContext } from "../store/store-context";
 
 export default function Home(props) {
-  const handleOnBannerBtnClick = () => {};
+  const { handleTrackLocation, locationErrorMsg, isFindingLocation } =
+    useTrackLocation();
+
+  const [coffeeStoresError, setCoffeeStoresError] = useState(null);
+  const {dispatch, state } = useContext(StoreContext);
+  const { coffeeStores, latLong } = state;
+
+  useEffect(() => {
+    async function setCoffeeStoresByLocation() {
+      if (latLong) {
+        try {
+          const fetchedCoffeeStores = await fetchCoffeeStores(latLong, 30);
+          console.log({ fetchedCoffeeStores });
+          // setCoffeeStores(fetchedCoffeeStores);
+          dispatch({
+            type: ACTION_TYPES.SET_COFFEE_STORES,
+            payload: {
+              coffeeStores: fetchedCoffeeStores, 
+            }
+          })
+        } catch (error) {
+          setCoffeeStoresError(error.message);
+        }
+      }
+    }
+    setCoffeeStoresByLocation();
+  }, [latLong]);
+
+  const handleOnBannerBtnClick = () => {
+    handleTrackLocation();
+  };
 
   return (
     <div className="h-[100vh] w-[full] text-[#373b64] flex justify-center">
@@ -18,9 +50,10 @@ export default function Home(props) {
 
       <div className="flex flex-col px-10 max-w-[1240px] w-full">
         <Banner
-          buttonText="View stores nearby"
+          buttonText={isFindingLocation ? "Locating..." : "View stores nearby"}
           handleOnClick={handleOnBannerBtnClick}
         />
+        {locationErrorMsg && <h1>Something went wrong: {locationErrorMsg}</h1>}
         <div className="absolute top-16 z-[1] left-[0] md:left-[10%] lg:left-[20%] xl:left-[40%] flex">
           <Image
             src="/static/hero-image.png"
@@ -30,17 +63,45 @@ export default function Home(props) {
           />
         </div>
 
+        {coffeeStores.length > 0 && (
+          <>
+            <h1 className="text-2xl font-bold mb-3 mt-[80px]">
+              Stores near me
+            </h1>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+              {coffeeStores.map((coffeeStore) => {
+                return (
+                  <Card
+                    key={coffeeStore.id}
+                    name={coffeeStore.name}
+                    href={`/coffee-store/${coffeeStore.id}`}
+                    imgUrl={
+                      coffeeStore.imgUrl ||
+                      "https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80"
+                    }
+                  />
+                );
+              })}
+            </div>
+          </>
+        )}
+
         {props.coffeeStores.length > 0 && (
           <>
-            <h1 className="text-2xl font-bold mb-3">Toronto Stores</h1>
+            <h1 className="text-2xl font-bold mb-3 mt-[80px]">
+              Toronto Stores
+            </h1>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
               {props.coffeeStores.map((coffeeStore) => {
                 return (
                   <Card
                     key={coffeeStore.id}
-                    name={coffeeStore.title}
+                    name={coffeeStore.name}
                     href={`/coffee-store/${coffeeStore.id}`}
-                    imgUrl={coffeeStore.image}
+                    imgUrl={
+                      coffeeStore.imgUrl ||
+                      "https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80"
+                    }
                   />
                 );
               })}
@@ -53,17 +114,8 @@ export default function Home(props) {
 }
 
 export async function getStaticProps(context) {
-
- const coffeeStores = await fetchCoffeeStores();
- 
- let newCoffeeArray = [];
-
- for (let i = 0; i < 10; i++) {
-  newCoffeeArray.push(coffeeStores[i])
- }
-
+  const coffeeStores = await fetchCoffeeStores();
   return {
-    props: { coffeeStores: newCoffeeArray}
+    props: { coffeeStores: coffeeStores },
   };
 }
-

@@ -1,7 +1,5 @@
 import { useRouter } from "next/router";
 import Link from "next/link";
-
-import coffeeStoresData from "../../data/coffee-stores.json";
 import Head from "next/head";
 import Image from "next/image";
 import {
@@ -10,20 +8,39 @@ import {
   StarIcon,
 } from "@heroicons/react/24/solid";
 import { fetchCoffeeStores } from "../../lib/coffee-stores";
+import { StoreContext } from "../../store/store-context";
+import { useContext, useEffect, useState } from "react";
+import { isEmpty } from "../../utils";
 
-const CoffeeStore = ({coffeeStore}) => {
-    console.log(coffeeStore)
+
+const CoffeeStore = (initialProps) => {
   const router = useRouter();
+  const [coffeeStore, setCoffeeStore] = useState(initialProps.coffeeStore)
+  const { state: { coffeeStores }} = useContext(StoreContext);
 
   if (router.isFallback) {
     return <div>Loading...</div>;
   }
+  const id = router.query.id;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    if(isEmpty(initialProps.coffeeStore)){
+      if(coffeeStores.length > 0){
+        const findCoffeeStoreById = coffeeStores.find((coffeeStore) => {
+          return coffeeStore.id.toString() === id;
+        });
+        setCoffeeStore(findCoffeeStoreById);
+      }
+    }
+  },[id])
 
-  const { title, category, description, image } = coffeeStore;
+
+  const { name, address, neighborhood, imgUrl } = coffeeStore;
 
   const handleUpvoteButton = () => {
     console.log("handle Upvote");
   };
+
   return (
     <div className="w-full flex justify-center px-5 py-10 ">
       <div className="w-full max-w-[1240px]">
@@ -32,13 +49,16 @@ const CoffeeStore = ({coffeeStore}) => {
             <title></title>
           </Head>
           <Link href="/">
-            <a className="text-xl font-bold text-[#4d284e]">Back to home</a>
+            <a className="text-xl font-bold text-[#4d284e]">← Back to home</a>
           </Link>
-          <h1 className="font-bold text-3xl text-white pb-4">{title}</h1>
+          <h1 className="font-bold text-3xl text-white pb-4">{name}</h1>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div>
               <Image
-                src={image}
+                src={
+                  imgUrl ||
+                  "https://images.unsplash.com/photo-1504753793650-d4a2b783c15e?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=2000&q=80"
+                }
                 alt="/"
                 width={700}
                 height={500}
@@ -49,13 +69,13 @@ const CoffeeStore = ({coffeeStore}) => {
               <div className="flex gap-3">
                 <MapPinIcon className="text-white w-6" />
                 <h1 className="text-2xl text-[#303358] font-bold font-[IBMPlexSans]">
-                  {category}
+                  {address}
                 </h1>
               </div>
               <div className="flex gap-3">
                 <PaperAirplaneIcon className="text-white w-6" />
                 <h1 className="text-2xl text-[#303358] font-bold font-[IBMPlexSans]">
-                  {description.substring(0, 30)}...
+                  {neighborhood}
                 </h1>
               </div>
               <div className="flex gap-3">
@@ -80,17 +100,16 @@ const CoffeeStore = ({coffeeStore}) => {
   );
 };
 
-// -------------------------------------------- Server Side
-
 export async function getStaticProps(staticProps) {
   const params = staticProps.params;
   const coffeeStores = await fetchCoffeeStores();
+  const findCoffeeStoreById = coffeeStores.find((coffeeStore) => {
+    return coffeeStore.id.toString() === params.id;
+  });
 
   return {
     props: {
-      coffeeStore: coffeeStores.find((coffeeStore) => {
-        return coffeeStore.id.toString() === params.id;
-      }),
+      coffeeStore: findCoffeeStoreById ? findCoffeeStoreById : {},
     },
   };
 }
